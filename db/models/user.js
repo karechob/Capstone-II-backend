@@ -27,10 +27,6 @@ const User = db.define('user', {
 
     reflash_token : {
         type: DataTypes.STRING,
-        allowNull: false,
-        validate : {
-            notEmpty : true,
-        }
     },
 
     access_token : {
