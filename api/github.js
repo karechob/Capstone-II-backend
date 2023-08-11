@@ -13,11 +13,30 @@ router.get("/", async (req, res, next) => {
       owner: 'yuzchen7',
       repo: 'ttp_crud_backend',
     });
-    res.send(result.data);
+    result ? 
+      res.send(result.data) :
+      res.status(500).json({message : 'get request for commit data failed'});
   } catch (err) {
-    res.status(500).json({message : 'get require commit failed'});
+    res.status(500).json({message : 'get request for commit data failed exception'});
     next(err);
   }
 });
+
+router.get("/pulls", async (req, res, next) => {
+  try {
+    const result = await octokit.request('GET /repos/{owner}/{repo}/pulls', {
+      owner: 'kai2233',
+      repo: 'TicketWingMan_backend',
+      state : 'all',
+    });
+    result ? 
+      res.send(result.data) :
+      res.status(500).json({message : 'get request for pulls data failed'});
+  } catch (err) {
+    res.status(500).json({message : 'get request for pulls data failed exception'});
+    next(err);
+  }
+});
+
 
 module.exports = router;
