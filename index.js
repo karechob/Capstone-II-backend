@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+const db = require("./db");
 const cors = require("cors");
 
 app.use(express.json());
@@ -14,6 +15,7 @@ const setupRoutes = () => {
 };
 
 const runServer = async (port) => {
+    await db.sync({ force: true }); // test purpose only
     app.listen(port, () => {
         console.log(`server is running on port 8080`);
     });
