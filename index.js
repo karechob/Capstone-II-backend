@@ -12,22 +12,39 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
     cors({
-      origin: "http://localhost:3000",
-      methods: "GET,PUT,PATCH,HEAD,POST,DELETE",
-      credentials: true,
+        origin: "http://localhost:3000",
+        methods: "GET,PUT,PATCH,HEAD,POST,DELETE",
+        credentials: true,
     })
-  );
+);
 
 app.use(
-  session({
-    secret: "capstoneii",
-    store: store,
-    resave: false,
-    saveUninitialized: false,
-    cookie: { maxAge: 7 * 1000 * 60 * 60 },
-    httpOnly: true,
-  })
+    session({
+        secret: "capstoneii",
+        store: store,
+        resave: false,
+        saveUninitialized: false,
+        cookie: { maxAge: 7 * 1000 * 60 * 60 },
+        httpOnly: true,
+    })
 );
+
+passport.serializeUser((user, done) => {
+    done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+    try {
+        const user = await User.findByPk(id);
+
+        done(null, user);
+    } catch (err) {
+        done(err);
+    }
+});
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 const setupRoutes = () => {
     app.use("/api", require("./api"));
