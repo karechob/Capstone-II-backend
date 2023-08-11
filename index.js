@@ -5,7 +5,7 @@ const cors = require("cors");
 const session = require("express-session");
 const sequelizeStore = require("connect-session-sequelize")(session.Store);
 const passport = require("passport");
-const { User } = require("./db/models");
+const User = require("./db/models");
 const store = new sequelizeStore({ db });
 
 app.use(express.json());
@@ -47,6 +47,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 const setupRoutes = () => {
+    app.use("/auth/github",require("./auth/github"));
     app.use("/api", require("./api"));
     app.get("/", (req, res) => {
         res.send("Hello! This is capstoneII backend");
