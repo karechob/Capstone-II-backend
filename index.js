@@ -7,6 +7,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
 const setupRoutes = () => {
+    app.use("/api", require("./api"));
     app.get("/", (req, res) => {
         res.send("Hello! This is capstoneII backend");
     });
