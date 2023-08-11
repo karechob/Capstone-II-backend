@@ -19,10 +19,10 @@ passport.use(
                 const email = profile.emails[0].value;
                 const username = profile.displayName;
                 const access_token = accessToken;
-                const reflash_token = "sdsafasfas";
+                const refresh_token = refreshToken;
                 const [user] = await User.findOrCreate({
                     where: { githubId },
-                    defaults: { email, username, access_token,reflash_token},
+                    defaults: { email, username, access_token,refresh_token},
                 });
 
                 done(null, user);
