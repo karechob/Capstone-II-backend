@@ -7,15 +7,56 @@ const octokit = new Octokit({
   auth: process.env.GITHUB_ACCESS_TOKEN
 });
 
-router.get("/", async (req, res, next) => {
+//helper functions
+//send api request to get the data of merge commits based on the sha
+async function filter (ownerOfRepo,repository,shaString){
+  const changeStats = await octokit.request('GET /repos/{owner}/{repo}/commits/{sha}', {
+    // owner: 'kai2233',
+    owner: ownerOfRepo,
+    repo: repository,
+    sha: shaString,
+  });
+  const dataObject = {
+    date: changeStats.data.commit.committer.date,
+    stats: changeStats.data.stats,
+    numFiles: changeStats.data.files.length,
+    files: changeStats.data.files
+  };
+  return dataObject;
+}
+
+//post http://localhost:8080/api/github/impact
+//to test out this endpoint, remeber to put the json object below in postman->body->raw->json type
+//{
+//   "owner":"kai2233",
+//   "repo": "TicketWingMan_backend"
+// }
+// 
+// result of this endpoint will list out the commits that does merge pull request from branch to main
+// include date, number of files affected, line of code been changed
+// more details about files changes is iniside file object
+router.post("/impact", async (req, res, next) => {
+  const{owner,repo} = req.body;
   try {
+    const filteredData = [];
+    const dataCollection = []
     const result = await octokit.request('GET /repos/{owner}/{repo}/commits', {
-      owner: 'yuzchen7',
-      repo: 'ttp_crud_backend',
+      owner: owner,
+      // repo: 'TicketWingMan_backend',
+      repo: repo,
+      per_page: 100,
     });
-    result ? 
-      res.send(result.data) :
-      res.status(500).json({message : 'get request for commit data failed'});
+    result.data.forEach(async (data) => {
+      if(data.commit.message.includes("Merge")){
+        // const result = await filter(data.parents[0].sha); 
+        filteredData.push(filter(owner,repo,data.parents[0].sha))
+      }
+    })
+    Promise.all(filteredData).then((stat)=>{
+      dataCollection.push(stat);
+    }).then(()=>{
+      res.send(dataCollection);
+    })
   } catch (err) {
     res.status(500).json({message : 'get request for commit data failed exception'});
     next(err);
