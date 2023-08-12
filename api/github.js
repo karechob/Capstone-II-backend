@@ -38,5 +38,21 @@ router.get("/pulls", async (req, res, next) => {
   }
 });
 
+router.get("/deployments", async (req, res, next) => {
+  try {
+    const result = await octokit.request('GET /repos/{owner}/{repo}/deployments', {
+      owner: 'kai2233',
+      repo: 'TicketWingMan_backend',
+      state : 'all',
+    });
+    result ? 
+      res.send(result.data) :
+      res.status(500).json({message : 'get request for deployments data failed'});
+  } catch (err) {
+    res.status(500).json({message : 'get request for deployments data failed exception'});
+    next(err);
+  }
+});
+
 
 module.exports = router;
