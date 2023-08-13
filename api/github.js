@@ -11,7 +11,6 @@ const octokit = new Octokit({
 //send api request to get the data of merge commits based on the sha
 async function impactFilter(ownerOfRepo, repository, shaString) {
 	const changeStats = await octokit.request('GET /repos/{owner}/{repo}/commits/{sha}', {
-		// owner: 'kai2233',
 		owner: ownerOfRepo,
 		repo: repository,
 		sha: shaString,
@@ -48,9 +47,8 @@ router.post("/impact", async (req, res, next) => {
 		// });
 		const result = await octokit.request('GET /repos/{owner}/{repo}/pulls',  {
 			owner: owner,
-			// repo: 'TicketWingMan_backend',
 			repo: repo,
-			per_page: 100,
+			per_page: 10,
 			state: "closed",
 		});
 		// res.status(200).json(result.data);
