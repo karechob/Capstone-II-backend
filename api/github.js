@@ -40,18 +40,26 @@ router.post("/impact", async (req, res, next) => {
 	try {
 		const filteredData = [];
 		const dataCollection = []
-		const result = await octokit.request('GET /repos/{owner}/{repo}/commits', {
+		// const result = await octokit.request('GET /repos/{owner}/{repo}/commits', {
+		// 	owner: owner,
+		// 	// repo: 'TicketWingMan_backend',
+		// 	repo: repo,
+		// 	per_page: 100,
+		// });
+		const result = await octokit.request('GET /repos/{owner}/{repo}/pulls',  {
 			owner: owner,
 			// repo: 'TicketWingMan_backend',
 			repo: repo,
 			per_page: 100,
+			state: "closed",
 		});
 		// res.status(200).json(result.data);
 		result.data.forEach(async (data) => {
-			if (data.commit.message.includes("Merge")) {
-				// const result = await filter(data.parents[0].sha); 
-				filteredData.push(impactFilter(owner, repo, data.sha))
-			}
+			// if (data.commit.message.includes("Merge")) {
+			 	// const result = await filter(data.parents[0].sha); 
+			// 	filteredData.push(impactFilter(owner, repo, data.sha))
+			// }
+			filteredData.push(impactFilter(owner,repo,data.merge_commit_sha))
 		})
 		Promise.all(filteredData).then((stat) => {
 			dataCollection.push(stat);
