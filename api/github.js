@@ -46,10 +46,11 @@ router.post("/impact", async (req, res, next) => {
       repo: repo,
       per_page: 100,
     });
+    // res.status(200).json(result.data);
     result.data.forEach(async (data) => {
       if(data.commit.message.includes("Merge")){
         // const result = await filter(data.parents[0].sha); 
-        filteredData.push(filter(owner,repo,data.parents[0].sha))
+        filteredData.push(filter(owner,repo,data.sha))
       }
     })
     Promise.all(filteredData).then((stat)=>{
