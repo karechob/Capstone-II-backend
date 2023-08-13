@@ -9,7 +9,7 @@ const octokit = new Octokit({
 
 //helper functions
 //send api request to get the data of merge commits based on the sha
-async function filter (ownerOfRepo,repository,shaString){
+async function impactFilter (ownerOfRepo,repository,shaString){
   const changeStats = await octokit.request('GET /repos/{owner}/{repo}/commits/{sha}', {
     // owner: 'kai2233',
     owner: ownerOfRepo,
@@ -50,7 +50,7 @@ router.post("/impact", async (req, res, next) => {
     result.data.forEach(async (data) => {
       if(data.commit.message.includes("Merge")){
         // const result = await filter(data.parents[0].sha); 
-        filteredData.push(filter(owner,repo,data.sha))
+        filteredData.push(impactFilter(owner,repo,data.sha))
       }
     })
     Promise.all(filteredData).then((stat)=>{
