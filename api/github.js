@@ -64,15 +64,6 @@ router.post("/impact", async (req, res, next) => {
 	}
 });
 
-function leadTimeGetAveage(dataCollection) {
-	var total = 0;
-	dataCollection.forEach(element => {
-		total += element.data.length;
-	});
-	// console.log('total commit -> ' + total);
-	return total / dataCollection.length;
-}
-
 function leadTimeObjFilter(dataObj) {
 	let filteredObj = {};
 	let commitdat = dataObj.commit;
@@ -102,7 +93,16 @@ function leadTimeFilter(dataCollection) {
 			}
 		}
 	});
-	return resData;
+	
+	let fianl = {
+		statistic: { 
+			aveage_commit: Math.round((dataCollection.length / resData.length) * 100) / 100,
+			total_commit: dataCollection.length 
+		}, 
+		commit_data: resData
+	}
+
+	return fianl;
 }
 
 async function getAllCommits(req) {
@@ -150,14 +150,10 @@ async function getAllCommits(req) {
 router.get("/leadTime", async (req, res, next) => {
 	try {
 		const result = await getAllCommits(req);
-
-		let total_commit = result.length;
 		let resultfiltered = leadTimeFilter(result);
-		let aveage = leadTimeGetAveage(resultfiltered);
-		finalres = { statistic: { aveage_commit: aveage, total_commit: total_commit }, commit_data: resultfiltered };
 
-		finalres ?
-			res.send(finalres) :
+		resultfiltered ?
+			res.send(resultfiltered) :
 			res.status(500).json({ message: 'get request for pulls data failed' });
 	} catch (err) {
 		res.status(500).json({ message: 'get request for pulls data failed exception' });
