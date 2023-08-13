@@ -96,7 +96,7 @@ function leadTimeFilter(dataCollection) {
 	
 	let fianl = {
 		statistic: { 
-			aveage_commit: Math.round((dataCollection.length / resData.length) * 100) / 100,
+			average_commit: Math.round((dataCollection.length / resData.length) * 100) / 100,
 			total_commit: dataCollection.length 
 		}, 
 		commit_data: resData
@@ -137,7 +137,7 @@ async function getAllCommits(req) {
 
   expected return result object :
 	{
-	  statistic : {aveage_commit, total_commit},
+	  statistic : {average_commit, total_commit},
 	  commit_data : [{author: {name, email., date}, commit_date, message}, ... ]
 	}
   
