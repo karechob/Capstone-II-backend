@@ -10,16 +10,27 @@ const octokit = new Octokit({
 //helper functions
 //send api request to get the data of merge commits based on the sha
 async function impactFilter(ownerOfRepo, repository, shaString) {
+	const files = [];
 	const changeStats = await octokit.request('GET /repos/{owner}/{repo}/commits/{sha}', {
 		owner: ownerOfRepo,
 		repo: repository,
 		sha: shaString,
 	});
+	changeStats.data.files.forEach( (fileData) => {
+		const fileObject = {
+			changes: fileData.changes,
+			additions: fileData.additions,
+			deletions: fileData.deletions,
+			filename: fileData.filename.split('/').pop(),
+		}
+		files.push( fileObject );
+	})
+
 	const dataObject = {
 		date: changeStats.data.commit.committer.date,
 		stats: changeStats.data.stats,
 		numFiles: changeStats.data.files.length,
-		files: changeStats.data.files
+		files: files
 	};
 	return dataObject;
 }
