@@ -178,4 +178,26 @@ router.get("/leadTime", async (req, res, next) => {
 	}
 });
 
+//Unreviewed Pull Requests
+async function getGitHubPulls(req) {
+	// console.log(req.query);
+	// const { owner, repo } = req.query;
+	const { owner, repo } = { owner: "languagetool-org", repo: "languagetool" };
+	const data = [];
+	//request api
+	const result = await octokit.request(
+	  "GET /repos/{owner}/{repo}/pulls?state=open",
+	  {
+		owner: owner,
+		repo: repo,
+  
+		headers: {
+		  "X-GitHub-Api-Version": "2022-11-28",
+		},
+	  }
+	);
+	return result;
+  }
+  getGitHubPulls();
+
 module.exports = router;
