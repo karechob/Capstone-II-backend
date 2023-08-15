@@ -10,17 +10,27 @@ const octokit = new Octokit({
 //helper functions
 //send api request to get the data of merge commits based on the sha
 async function impactFilter(ownerOfRepo, repository, shaString) {
+	const files = [];
 	const changeStats = await octokit.request('GET /repos/{owner}/{repo}/commits/{sha}', {
-		// owner: 'kai2233',
 		owner: ownerOfRepo,
 		repo: repository,
 		sha: shaString,
 	});
+	changeStats.data.files.forEach( (fileData) => {
+		const fileObject = {
+			changes: fileData.changes,
+			additions: fileData.additions,
+			deletions: fileData.deletions,
+			filename: fileData.filename.split('/').pop(),
+		}
+		files.push( fileObject );
+	})
+
 	const dataObject = {
 		date: changeStats.data.commit.committer.date,
 		stats: changeStats.data.stats,
 		numFiles: changeStats.data.files.length,
-		files: changeStats.data.files
+		files: files
 	};
 	return dataObject;
 }
@@ -40,18 +50,25 @@ router.post("/impact", async (req, res, next) => {
 	try {
 		const filteredData = [];
 		const dataCollection = []
-		const result = await octokit.request('GET /repos/{owner}/{repo}/commits', {
+		// const result = await octokit.request('GET /repos/{owner}/{repo}/commits', {
+		// 	owner: owner,
+		// 	// repo: 'TicketWingMan_backend',
+		// 	repo: repo,
+		// 	per_page: 100,
+		// });
+		const result = await octokit.request('GET /repos/{owner}/{repo}/pulls',  {
 			owner: owner,
-			// repo: 'TicketWingMan_backend',
 			repo: repo,
-			per_page: 100,
+			per_page: 10,
+			state: "closed",
 		});
 		// res.status(200).json(result.data);
 		result.data.forEach(async (data) => {
-			if (data.commit.message.includes("Merge")) {
-				// const result = await filter(data.parents[0].sha); 
-				filteredData.push(impactFilter(owner, repo, data.sha))
-			}
+			// if (data.commit.message.includes("Merge")) {
+			 	// const result = await filter(data.parents[0].sha); 
+			// 	filteredData.push(impactFilter(owner, repo, data.sha))
+			// }
+			filteredData.push(impactFilter(owner,repo,data.merge_commit_sha))
 		})
 		Promise.all(filteredData).then((stat) => {
 			dataCollection.push(stat);
@@ -63,15 +80,6 @@ router.post("/impact", async (req, res, next) => {
 		next(err);
 	}
 });
-
-function leadTimeGetAveage(dataCollection) {
-	var total = 0;
-	dataCollection.forEach(element => {
-		total += element.data.length;
-	});
-	// console.log('total commit -> ' + total);
-	return total / dataCollection.length;
-}
 
 function leadTimeObjFilter(dataObj) {
 	let filteredObj = {};
@@ -102,7 +110,16 @@ function leadTimeFilter(dataCollection) {
 			}
 		}
 	});
-	return resData;
+	
+	let fianl = {
+		statistic: { 
+			average_commit: Math.round((dataCollection.length / resData.length) * 100) / 100,
+			total_commit: dataCollection.length 
+		}, 
+		commit_data: resData
+	}
+
+	return fianl;
 }
 
 async function getAllCommits(req) {
@@ -137,7 +154,7 @@ async function getAllCommits(req) {
 
   expected return result object :
 	{
-	  statistic : {aveage_commit, total_commit},
+	  statistic : {average_commit, total_commit},
 	  commit_data : [{author: {name, email., date}, commit_date, message}, ... ]
 	}
   
@@ -150,14 +167,10 @@ async function getAllCommits(req) {
 router.get("/leadTime", async (req, res, next) => {
 	try {
 		const result = await getAllCommits(req);
-
-		let total_commit = result.length;
 		let resultfiltered = leadTimeFilter(result);
-		let aveage = leadTimeGetAveage(resultfiltered);
-		finalres = { statistic: { aveage_commit: aveage, total_commit: total_commit }, commit_data: resultfiltered };
 
-		finalres ?
-			res.send(finalres) :
+		resultfiltered ?
+			res.send(resultfiltered) :
 			res.status(500).json({ message: 'get request for pulls data failed' });
 	} catch (err) {
 		res.status(500).json({ message: 'get request for pulls data failed exception' });
