@@ -193,28 +193,86 @@ router.get("/leadTime", async (req, res, next) => {
 
 // Unreviewed Pull Requests
 async function getGitHubPulls(req) {
+  const _marker = "_marker";
   // console.log(req.query);
   // const { owner, repo } = req.query;
+  console.time(_marker);
   // the owner and repo is hardcoded for now, will change it later
   const { owner, repo } = { owner: "languagetool-org", repo: "languagetool" };
-  const data = [];
-  // request api
-  const result = await octokit.request(
-    "GET /repos/{owner}/{repo}/pulls?state=open",
-    {
-      owner: owner,
-      repo: repo,
+  async function getAllPulls(limit, page) {
+    console.log(`page number: ${page}`);
+    const data = [];
+    // request api
+    const result = await octokit.request(
+      // get both open and close pull requests
+      // "GET /repos/{owner}/{repo}/pulls?state=all",
+      `GET /repos/{owner}/{repo}/pulls?state=all&per_page=${limit}&page=${page}`,
+      {
+        owner: owner,
+        repo: repo,
+        headers: {
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      }
+    );
+    if (Array.isArray(result.data)) {
+      data.push(...result.data);
+    }
+    if (result.data.length < limit) {
+      return data;
+    } else {
+      const preData = await getAllPulls(limit, page + 1);
+      if (Array.isArray(preData)) {
+        data.push(...preData);
+      }
+      return data;
+    }
+  }
 
+  let pullData = await getAllPulls(100, 1);
+  console.log("Successfully fetch pullData ", pullData.length);
+  const promises = Promise.all(
+    pullData.map((t, i) =>
+      getGitHubPullReview(owner, repo, t.number, i, pullData.length)
+    )
+  );
+  const result = [];
+  promises.then((res) => {
+    console.log("Successfully fetch reviewData ");
+    const reviewData = res.map((t) => t.data);
+    reviewData.forEach((t, i) => {
+      result[i] = {
+        date: pullData[i].updated_at.substr(0, 10),
+        state: t.length > 0,
+      };
+    });
+  });
+  console.timeEnd(_marker);
+  return result;
+}
+
+async function getGitHubPullReview(owner, repo, pull_number, index, total) {
+  return await octokit
+    .request("GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews", {
+      owner,
+      repo,
+      pull_number,
       headers: {
         "X-GitHub-Api-Version": "2022-11-28",
       },
-    }
-  );
-  return result;
+    })
+    .then((res) => {
+      console.log(`Current progress: ${index}/${total}`);
+    });
 }
-getGitHubPulls();
+getGitHubPulls()
+  .then((res) => {
+    console.log(res, "getGitHubPulls");
+  })
+  .catch((err) => {
+    console.log(err, "error");
+  });
 
-// sample postman testing route: http://localhost:8080/api/github/generatePull?owner=[languagetool-org]&repo=[languagetool]
 router.get("/generatePull", async (req, res, next) => {
   try {
     const result = await getGitHubPulls(req);
