@@ -193,10 +193,8 @@ router.get("/leadTime", async (req, res, next) => {
 
 // Unreviewed Pull Requests
 async function getGitHubPulls(req) {
-  const _marker = "_marker";
   // console.log(req.query);
   // const { owner, repo } = req.query;
-  console.time(_marker);
   // the owner and repo is hardcoded for now, will change it later
   const { owner, repo } = { owner: "languagetool-org", repo: "languagetool" };
   async function getAllPulls(limit, page) {
@@ -204,9 +202,9 @@ async function getGitHubPulls(req) {
     const data = [];
     // request api
     const result = await octokit.request(
-      // get both open and close pull requests
-      // "GET /repos/{owner}/{repo}/pulls?state=all",
-      `GET /repos/{owner}/{repo}/pulls?state=all&per_page=${limit}&page=${page}`,
+      // get open pull requests only to avoid api call limit
+      // "GET /repos/{owner}/{repo}/pulls?state=open",
+      `GET /repos/{owner}/{repo}/pulls?state=open&per_page=${limit}&page=${page}`,
       {
         owner: owner,
         repo: repo,
@@ -215,12 +213,15 @@ async function getGitHubPulls(req) {
         },
       }
     );
+    // return data and store it in declared data array
     if (Array.isArray(result.data)) {
       data.push(...result.data);
     }
+    // if limit is smaller than length, then it is the last page
     if (result.data.length < limit) {
       return data;
     } else {
+      // if not, then go to next page and retrieve data
       const preData = await getAllPulls(limit, page + 1);
       if (Array.isArray(preData)) {
         data.push(...preData);
@@ -228,26 +229,33 @@ async function getGitHubPulls(req) {
       return data;
     }
   }
-
   let pullData = await getAllPulls(100, 1);
-  console.log("Successfully fetch pullData ", pullData.length);
+  console.log("Successfully fetch pullData");
+  // use Promise.all to execute all asynchronous functions
   const promises = Promise.all(
     pullData.map((t, i) =>
       getGitHubPullReview(owner, repo, t.number, i, pullData.length)
     )
   );
-  const result = [];
-  promises.then((res) => {
-    console.log("Successfully fetch reviewData ");
-    const reviewData = res.map((t) => t.data);
-    reviewData.forEach((t, i) => {
-      result[i] = {
-        date: pullData[i].updated_at.substr(0, 10),
-        state: t.length > 0,
-      };
+  // keep track of successfully reviewed and failed-to-review GitHub pull requests
+  const result = {
+    success: 0,
+    failure: 0,
+  };
+  await promises.then((res) => {
+    console.log("Successfully fetch reviewData");
+    res.forEach((t, i) => {
+      // if review.data's length is greater than 0, it means there is comment in that pull request
+      // then it is not an unreviewed pull requests
+      // therefore, the count of successfully reviewed pull requests increments
+      if (Array.isArray(t.data) && t.data.length > 0) {
+        result.success++;
+      } else {
+        // otherwise, the count of pull requests failed to be reviewed increments
+        result.failure++;
+      }
     });
   });
-  console.timeEnd(_marker);
   return result;
 }
 
@@ -262,16 +270,9 @@ async function getGitHubPullReview(owner, repo, pull_number, index, total) {
       },
     })
     .then((res) => {
-      console.log(`Current progress: ${index}/${total}`);
+      return res;
     });
 }
-getGitHubPulls()
-  .then((res) => {
-    console.log(res, "getGitHubPulls");
-  })
-  .catch((err) => {
-    console.log(err, "error");
-  });
 
 router.get("/generatePull", async (req, res, next) => {
   try {
