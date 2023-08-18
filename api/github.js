@@ -75,9 +75,8 @@ function leadTimeObjFilter(dataObj) {
 
 function leadTimeFilter(dataCollection) {
 	let resData = [];
-	dataCollection.map(element => {
-		let filteredEle = leadTimeObjFilter(element);
-
+	for (var i = dataCollection.length - 1; i >= 0; i--) {
+		let filteredEle = leadTimeObjFilter(dataCollection[i]);
 		if (resData.length == 0) {
 			resData.push({ date: filteredEle.commit_date, data: [filteredEle] });
 		} else {
@@ -92,7 +91,7 @@ function leadTimeFilter(dataCollection) {
 				resData.push({ date: filteredEle.commit_date, data: [filteredEle] });
 			}
 		}
-	});
+	}
 	
 	let fianl = {
 		statistic: { 
