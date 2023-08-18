@@ -157,7 +157,7 @@ async function getAllCommits(req) {
 
 /*
   end-point url -> http://localhost:8080/api/github/leadTime?owner=[owner]&repo=[repo]
-	smaple usage -> http://localhost:8080/api/github/leadTime?owner=kai2233&repo=TicketWingMan_backend
+	sample usage -> http://localhost:8080/api/github/leadTime?owner=kai2233&repo=TicketWingMan_backend
 
   expected query data pass in:
 	owner = [the name of the repo's owner]
@@ -191,14 +191,14 @@ router.get("/leadTime", async (req, res, next) => {
   }
 });
 
-// Unreviewed Pull Requests
+// Unreviewed Pull Requests helper function
 async function getGitHubPulls(req) {
   // console.log(req.query);
   // const { owner, repo } = req.query;
   // the owner and repo is hardcoded for now, will change it later
   const { owner, repo } = { owner: "languagetool-org", repo: "languagetool" };
   async function getAllPulls(limit, page) {
-    console.log(`page number: ${page}`);
+    // console.log(`page number: ${page}`);
     const data = [];
     // request api
     const result = await octokit.request(
@@ -230,7 +230,7 @@ async function getGitHubPulls(req) {
     }
   }
   let pullData = await getAllPulls(100, 1);
-  console.log("Successfully fetch pullData");
+  // console.log("Successfully fetch pullData");
   // use Promise.all to execute all asynchronous functions
   const promises = Promise.all(
     pullData.map((t, i) =>
@@ -243,7 +243,7 @@ async function getGitHubPulls(req) {
     failure: 0,
   };
   await promises.then((res) => {
-    console.log("Successfully fetch reviewData");
+    // console.log("Successfully fetch reviewData");
     res.forEach((t, i) => {
       // if review.data's length is greater than 0, it means there is comment in that pull request
       // then it is not an unreviewed pull requests
@@ -270,10 +270,28 @@ async function getGitHubPullReview(owner, repo, pull_number, index, total) {
       },
     })
     .then((res) => {
+      // console.log(`Current progress: ${index + 1}/${total}`);
       return res;
     });
 }
 
+/*
+  End-point url -> http://localhost:8080/api/github/generatePull?owner=[owner]&repo=[repo]
+	Sample usage -> http://localhost:8080/api/github/generatePull?owner=facebook&repo=react
+
+  Expected query data pass in:
+	owner = [the name of the repo's owner]
+	repo = [the name of the repo]
+
+  Expected return result object :
+  {
+    success : number of reviewed open pull requests,
+    failure : number of unreviewed open pull requests
+  }
+  
+  Description:
+  The result of this endpoint will show the number of reviewed and unreviewed open pull requests. To be considered as a reviewed open pull request, the state of the pull request has to be open, and another contributor must have commented on or approved part of the code within the pull request
+*/
 router.get("/generatePull", async (req, res, next) => {
   try {
     const result = await getGitHubPulls(req);
