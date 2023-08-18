@@ -10,17 +10,27 @@ const octokit = new Octokit({
 //helper functions
 //send api request to get the data of merge commits based on the sha
 async function impactFilter(ownerOfRepo, repository, shaString) {
+	const files = [];
 	const changeStats = await octokit.request('GET /repos/{owner}/{repo}/commits/{sha}', {
-		// owner: 'kai2233',
 		owner: ownerOfRepo,
 		repo: repository,
 		sha: shaString,
 	});
+	changeStats.data.files.forEach( (fileData) => {
+		const fileObject = {
+			changes: fileData.changes,
+			additions: fileData.additions,
+			deletions: fileData.deletions,
+			filename: fileData.filename.split('/').pop(),
+		}
+		files.push( fileObject );
+	})
+
 	const dataObject = {
 		date: changeStats.data.commit.committer.date,
 		stats: changeStats.data.stats,
 		numFiles: changeStats.data.files.length,
-		files: changeStats.data.files
+		files: files
 	};
 	return dataObject;
 }
@@ -40,18 +50,25 @@ router.post("/impact", async (req, res, next) => {
 	try {
 		const filteredData = [];
 		const dataCollection = []
-		const result = await octokit.request('GET /repos/{owner}/{repo}/commits', {
+		// const result = await octokit.request('GET /repos/{owner}/{repo}/commits', {
+		// 	owner: owner,
+		// 	// repo: 'TicketWingMan_backend',
+		// 	repo: repo,
+		// 	per_page: 100,
+		// });
+		const result = await octokit.request('GET /repos/{owner}/{repo}/pulls',  {
 			owner: owner,
-			// repo: 'TicketWingMan_backend',
 			repo: repo,
-			per_page: 100,
+			per_page: 10,
+			state: "closed",
 		});
 		// res.status(200).json(result.data);
 		result.data.forEach(async (data) => {
-			if (data.commit.message.includes("Merge")) {
-				// const result = await filter(data.parents[0].sha); 
-				filteredData.push(impactFilter(owner, repo, data.sha))
-			}
+			// if (data.commit.message.includes("Merge")) {
+			 	// const result = await filter(data.parents[0].sha); 
+			// 	filteredData.push(impactFilter(owner, repo, data.sha))
+			// }
+			filteredData.push(impactFilter(owner,repo,data.merge_commit_sha))
 		})
 		Promise.all(filteredData).then((stat) => {
 			dataCollection.push(stat);
