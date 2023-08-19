@@ -59,7 +59,7 @@ router.post("/impact", async (req, res, next) => {
 		const result = await octokit.request('GET /repos/{owner}/{repo}/pulls',  {
 			owner: owner,
 			repo: repo,
-			per_page: 10,
+			per_page: 5,
 			state: "closed",
 		});
 		// res.status(200).json(result.data);
