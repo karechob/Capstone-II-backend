@@ -194,9 +194,7 @@ router.get("/leadTime", async (req, res, next) => {
 // Unreviewed Pull Requests helper function
 async function getGitHubPulls(req) {
   // console.log(req.query);
-  // const { owner, repo } = req.query;
-  // the owner and repo is hardcoded for now, will change it later
-  const { owner, repo } = { owner: "languagetool-org", repo: "languagetool" };
+  const { owner, repo } = req.query;
   async function getAllPulls(limit, page) {
     // console.log(`page number: ${page}`);
     const data = [];
