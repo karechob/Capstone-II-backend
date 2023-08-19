@@ -391,6 +391,36 @@ router.get("/thoroughPRs", async (req, res, next) => {
   }
 })
 
+
+async function new_work_metric_filter(ownerOfRepo, repository, shaString) {
+  const files = [];
+  const changeStats = await octokit.request(
+    "GET /repos/{owner}/{repo}/commits/{sha}",
+    {
+      owner: ownerOfRepo,
+      repo: repository,
+      sha: shaString,
+    }
+  );
+  changeStats.data.files.forEach((fileData) => {
+    const fileObject = {
+      changes: fileData.changes,
+      additions: fileData.additions,
+      deletions: fileData.deletions,
+      filename: fileData.filename.split("/").pop(),
+    };
+    files.push(fileObject);
+  });
+
+  const dataObject = {
+    date: changeStats.data.commit.committer.date.split('T')[0],
+    stats: changeStats.data.stats,
+    numFiles: changeStats.data.files.length,
+    files: files,
+  };
+  return dataObject;
+}
+
 router.post("/new_Work", async (req, res, next) => {
   const { owner, repo } = req.body;
   try {
@@ -413,7 +443,7 @@ router.post("/new_Work", async (req, res, next) => {
       if (data.commit.verification.verified === true) {
         continue;
       }
-      filteredData.push(impactFilter(owner, repo, data.sha));
+      filteredData.push(new_work_metric_filter(owner, repo, data.sha));
     }
     console.log(filteredData.length);
     // res.status(200).json(filteredData);
