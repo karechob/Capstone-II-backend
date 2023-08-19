@@ -391,4 +391,42 @@ router.get("/thoroughPRs", async (req, res, next) => {
   }
 })
 
+router.post("/new_Work", async (req, res, next) => {
+  const { owner, repo } = req.body;
+  try {
+    const filteredData = [];
+
+    //get the date 7 days ago
+    let sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const exactDate = sevenDaysAgo.toISOString().split('T')[0];
+
+    const result = await octokit.request('GET /repos/{owner}/{repo}/commits', {
+    	owner: owner,
+    	repo: repo,
+    	since: exactDate,
+      per_page: 100,
+    });
+    console.log(result.data.length);
+    for(let data of result.data){
+      //skip the merge pull request commits
+      if (data.commit.verification.verified === true) {
+        continue;
+      }
+      filteredData.push(impactFilter(owner, repo, data.sha));
+    }
+    console.log(filteredData.length);
+    // res.status(200).json(filteredData);
+    Promise.all(filteredData)
+      .then((stat) => {
+          res.send(stat);
+      })
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "get request for commit data failed exception" });
+    next(err);
+  }
+});
+
 module.exports = router;
