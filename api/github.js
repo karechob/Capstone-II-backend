@@ -101,33 +101,34 @@ function leadTimeObjFilter(dataObj) {
 }
 
 function leadTimeFilter(dataCollection) {
-	let resData = [];
-	for (var i = dataCollection.length - 1; i >= 0; i--) {
-		let filteredEle = leadTimeObjFilter(dataCollection[i]);
-		if (resData.length == 0) {
-			resData.push({ date: filteredEle.commit_date, data: [filteredEle] });
-		} else {
-			let res = resData.some(item => {
-				if (item.date == filteredEle.commit_date) {
-					item.data.push(filteredEle);
-					return true;
-				}
-			});
+  let resData = [];
+  for (var i = dataCollection.length - 1; i >= 0; i--) {
+    let filteredEle = leadTimeObjFilter(dataCollection[i]);
+    if (resData.length == 0) {
+      resData.push({ date: filteredEle.commit_date, data: [filteredEle] });
+    } else {
+      let res = resData.some((item) => {
+        if (item.date == filteredEle.commit_date) {
+          item.data.push(filteredEle);
+          return true;
+        }
+      });
 
-			if (!res) {
-				resData.push({ date: filteredEle.commit_date, data: [filteredEle] });
-			}
-		}
-	}
-	
-	let fianl = {
-		statistic: { 
-			average_commit: Math.round((dataCollection.length / resData.length) * 100) / 100,
-			total_commit: dataCollection.length 
-		}, 
-		commit_data: resData
-	}
-  
+      if (!res) {
+        resData.push({ date: filteredEle.commit_date, data: [filteredEle] });
+      }
+    }
+  }
+
+  let fianl = {
+    statistic: {
+      average_commit:
+        Math.round((dataCollection.length / resData.length) * 100) / 100,
+      total_commit: dataCollection.length,
+    },
+    commit_data: resData,
+  };
+
   return fianl;
 }
 
@@ -300,19 +301,29 @@ router.get("/generatePull", async (req, res, next) => {
   }
 });
 
+router.get("/responsiveness", async (req, res, next) => {
+  try {
+    const result = await getGitHubPulls(req, "comments");
+    res.send(result);
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "get request for pulls data failed exception" });
+    next(err);
+  }
+});
 
 async function getThoroughPRs(owner, repo) {
   //console.log(owner + " owner 232");
   //console.log(repo + " repository 233 ");
-    try {
-      if (owner && repo) {
+  try {
+    if (owner && repo) {
+      let allPullRequests = [];
+      let page = 1;
+      let hasMorePullRequests = true;
 
-        let allPullRequests = [];
-        let page = 1;
-        let hasMorePullRequests = true;
-
-        while (hasMorePullRequests) {
-          const response = await octokit.request(
+      while (hasMorePullRequests) {
+        const response = await octokit.request(
           "GET /repos/{owner}/{repo}/pulls",
           {
             owner: owner,
@@ -321,74 +332,73 @@ async function getThoroughPRs(owner, repo) {
             base: "main",
             page: page,
             per_page: 100,
-      
+
             headers: {
               "X-GitHub-Api-Version": "2022-11-28",
             },
           }
-        )
+        );
 
-          const pullRequests = response.data;
-          allPullRequests = allPullRequests.concat(pullRequests);
+        const pullRequests = response.data;
+        allPullRequests = allPullRequests.concat(pullRequests);
 
-          // check if there are more pages
-          if (pullRequests.length === 0) {
-            hasMorePullRequests = false;
-          } else {
-            page++;
-          }
+        // check if there are more pages
+        if (pullRequests.length === 0) {
+          hasMorePullRequests = false;
+        } else {
+          page++;
         }
-
-        let totalRequests = allPullRequests.length;
-        let thoroughRequests = 0;
-        //console.log(totalRequests + " total");
-
-        for (const request of allPullRequests) {
-          const commentsResponse = await octokit.request(request.comments_url, {
-            headers: {
-              "X-GitHub-Api-Version": "2022-11-28",
-            },
-          });
-
-          const comments = commentsResponse.data;
-
-          if (comments.length > 0) {
-            thoroughRequests++;
-          }
-        }
-
-        //console.log(thoroughRequests + "getThoroughPRs 289");
-        let percentage = (Math.round((thoroughRequests / totalRequests) * 100));
-        //console.log(percentage + "getThoroughPRs 291");
-        let notThorough = (Math.round(((totalRequests - thoroughRequests) / totalRequests) * 100));
-        //console.log(notThorough + "getThoroughPRs 293");
-        return { percentage, notThorough }; 
       }
-    } catch (error) {
-      console.log("error fetching pull requests " + error);
-      throw error;
-    }
-}
 
+      let totalRequests = allPullRequests.length;
+      let thoroughRequests = 0;
+      //console.log(totalRequests + " total");
+
+      for (const request of allPullRequests) {
+        const commentsResponse = await octokit.request(request.comments_url, {
+          headers: {
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+        });
+
+        const comments = commentsResponse.data;
+
+        if (comments.length > 0) {
+          thoroughRequests++;
+        }
+      }
+
+      //console.log(thoroughRequests + "getThoroughPRs 289");
+      let percentage = Math.round((thoroughRequests / totalRequests) * 100);
+      //console.log(percentage + "getThoroughPRs 291");
+      let notThorough = Math.round(
+        ((totalRequests - thoroughRequests) / totalRequests) * 100
+      );
+      //console.log(notThorough + "getThoroughPRs 293");
+      return { percentage, notThorough };
+    }
+  } catch (error) {
+    console.log("error fetching pull requests " + error);
+    throw error;
+  }
+}
 
 router.get("/thoroughPRs", async (req, res, next) => {
   console.log(req.query);
   try {
-    let owner = req.query.owner; 
-    let repo = req.query.repo; 
+    let owner = req.query.owner;
+    let repo = req.query.repo;
 
     const result = await getThoroughPRs(owner, repo);
     console.log(result + "router");
-    res.json(result); 
-
+    res.json(result);
   } catch (err) {
     res
       .status(500)
       .json({ message: "get request for thorough pulls data failed" });
     next(err);
   }
-})
-
+});
 
 async function new_work_metric_filter(ownerOfRepo, repository, shaString) {
   const files = [];
@@ -411,7 +421,7 @@ async function new_work_metric_filter(ownerOfRepo, repository, shaString) {
   });
 
   const dataObject = {
-    date: changeStats.data.commit.committer.date.split('T')[0],
+    date: changeStats.data.commit.committer.date.split("T")[0],
     stats: changeStats.data.stats,
     numFiles: changeStats.data.files.length,
     files: files,
@@ -427,16 +437,16 @@ router.post("/new_Work", async (req, res, next) => {
     //get the date 7 days ago
     let sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const exactDate = sevenDaysAgo.toISOString().split('T')[0];
+    const exactDate = sevenDaysAgo.toISOString().split("T")[0];
 
-    const result = await octokit.request('GET /repos/{owner}/{repo}/commits', {
-    	owner: owner,
-    	repo: repo,
-    	since: exactDate,
+    const result = await octokit.request("GET /repos/{owner}/{repo}/commits", {
+      owner: owner,
+      repo: repo,
+      since: exactDate,
       per_page: 100,
     });
     console.log(result.data.length);
-    for(let data of result.data){
+    for (let data of result.data) {
       //skip the merge pull request commits
       if (data.commit.verification.verified === true) {
         continue;
@@ -445,10 +455,9 @@ router.post("/new_Work", async (req, res, next) => {
     }
     console.log(filteredData.length);
     // res.status(200).json(filteredData);
-    Promise.all(filteredData)
-      .then((stat) => {
-          res.send(stat);
-      })
+    Promise.all(filteredData).then((stat) => {
+      res.send(stat);
+    });
   } catch (err) {
     res
       .status(500)
