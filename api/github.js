@@ -191,7 +191,7 @@ router.get("/leadTime", async (req, res, next) => {
 });
 
 // Unreviewed Pull Requests helper function
-async function getGitHubPulls(req) {
+async function getGitHubPulls(req, type) {
   // console.log(req.query);
   const { owner, repo } = req.query;
   async function getAllPulls(limit, page) {
