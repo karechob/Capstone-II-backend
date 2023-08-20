@@ -272,6 +272,19 @@ async function getGitHubPullReview(owner, repo, pull_number, index, total) {
     });
 }
 
+async function getGitHubPullComment(url, index, total) {
+  return await octokit
+    .request(url, {
+      headers: {
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    })
+    .then((res) => {
+      // console.log(`Current progress: ${index + 1}/${total}`);
+      return res.data;
+    });
+}
+
 /*
   End-point url -> http://localhost:8080/api/github/generatePull?owner=[owner]&repo=[repo]
 	Sample usage -> http://localhost:8080/api/github/generatePull?owner=facebook&repo=react
