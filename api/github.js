@@ -101,35 +101,33 @@ function leadTimeObjFilter(dataObj) {
 }
 
 function leadTimeFilter(dataCollection) {
-  let resData = [];
-  dataCollection.map((element) => {
-    let filteredEle = leadTimeObjFilter(element);
+	let resData = [];
+	for (var i = dataCollection.length - 1; i >= 0; i--) {
+		let filteredEle = leadTimeObjFilter(dataCollection[i]);
+		if (resData.length == 0) {
+			resData.push({ date: filteredEle.commit_date, data: [filteredEle] });
+		} else {
+			let res = resData.some(item => {
+				if (item.date == filteredEle.commit_date) {
+					item.data.push(filteredEle);
+					return true;
+				}
+			});
 
-    if (resData.length == 0) {
-      resData.push({ date: filteredEle.commit_date, data: [filteredEle] });
-    } else {
-      let res = resData.some((item) => {
-        if (item.date == filteredEle.commit_date) {
-          item.data.push(filteredEle);
-          return true;
-        }
-      });
-
-      if (!res) {
-        resData.push({ date: filteredEle.commit_date, data: [filteredEle] });
-      }
-    }
-  });
-
-  let fianl = {
-    statistic: {
-      average_commit:
-        Math.round((dataCollection.length / resData.length) * 100) / 100,
-      total_commit: dataCollection.length,
-    },
-    commit_data: resData,
-  };
-
+			if (!res) {
+				resData.push({ date: filteredEle.commit_date, data: [filteredEle] });
+			}
+		}
+	}
+	
+	let fianl = {
+		statistic: { 
+			average_commit: Math.round((dataCollection.length / resData.length) * 100) / 100,
+			total_commit: dataCollection.length 
+		}, 
+		commit_data: resData
+	}
+  
   return fianl;
 }
 
