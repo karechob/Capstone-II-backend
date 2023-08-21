@@ -62,7 +62,7 @@ router.post("/impact", async (req, res, next) => {
     const result = await octokit.request("GET /repos/{owner}/{repo}/pulls", {
       owner: owner,
       repo: repo,
-      per_page: 10,
+      per_page: 5,
       state: "closed",
     });
     // res.status(200).json(result.data);
@@ -102,9 +102,8 @@ function leadTimeObjFilter(dataObj) {
 
 function leadTimeFilter(dataCollection) {
   let resData = [];
-  dataCollection.map((element) => {
-    let filteredEle = leadTimeObjFilter(element);
-
+  for (var i = dataCollection.length - 1; i >= 0; i--) {
+    let filteredEle = leadTimeObjFilter(dataCollection[i]);
     if (resData.length == 0) {
       resData.push({ date: filteredEle.commit_date, data: [filteredEle] });
     } else {
@@ -119,7 +118,7 @@ function leadTimeFilter(dataCollection) {
         resData.push({ date: filteredEle.commit_date, data: [filteredEle] });
       }
     }
-  });
+  }
 
   let fianl = {
     statistic: {
@@ -192,7 +191,7 @@ router.get("/leadTime", async (req, res, next) => {
 });
 
 // Unreviewed Pull Requests helper function
-async function getGitHubPulls(req) {
+async function getGitHubPulls(req, type) {
   // console.log(req.query);
   const { owner, repo } = req.query;
   async function getAllPulls(limit, page) {
@@ -230,33 +229,93 @@ async function getGitHubPulls(req) {
   let pullData = await getAllPulls(100, 1);
   // console.log("Successfully fetch pullData");
   // use Promise.all to execute all asynchronous functions
-  const promises = Promise.all(
-    pullData.map((t, i) =>
-      getGitHubPullReview(owner, repo, t.number, i, pullData.length)
-    )
-  );
-  // keep track of successfully reviewed and failed-to-review GitHub pull requests
-  const result = {
-    success: 0,
-    failure: 0,
-  };
-  await promises.then((res) => {
-    // console.log("Successfully fetch reviewData");
-    res.forEach((t, i) => {
-      // if review.data's length is greater than 0, it means there is comment in that pull request
-      // then it is not an unreviewed pull requests
-      // therefore, the count of successfully reviewed pull requests increments
-      if (Array.isArray(t.data) && t.data.length > 0) {
-        result.success++;
-      } else {
-        // otherwise, the count of pull requests failed to be reviewed increments
-        result.failure++;
-      }
+
+  if (type === "comments") {
+    const promises = Promise.all(
+      pullData.map((t, i) =>
+        getGitHubPullComment(t.comments_url, i, pullData.length)
+      )
+    );
+    const result = {
+      halfAnHour: 0,
+      anHour: 0,
+      threeHours: 0,
+      halfADay: 0,
+      aDay: 0,
+      aWeek: 0,
+      oneMonth: 0,
+      notResponding: 0,
+    };
+    const map = {
+      halfAnHour: 1000 * 60 * 30,
+      anHour: 1000 * 60 * 60,
+      threeHours: 1000 * 60 * 60 * 3,
+      halfADay: 1000 * 60 * 60 * 12,
+      aDay: 1000 * 60 * 60 * 24,
+      aWeek: 1000 * 60 * 60 * 24 * 7,
+      oneMonth: 1000 * 60 * 60 * 24 * 30,
+    };
+    await promises.then((res) => {
+      res.forEach((t, i) => {
+        if (t.length === 0) {
+          result.notResponding++;
+        } else {
+          // time for the first comment
+          const targetTime = new Date(t[0].created_at).getTime();
+          // time when the pull request is made
+          const sourceTime = new Date(pullData[i].created_at).getTime();
+          const diff = targetTime - sourceTime;
+
+          // check the time range that the data falls within
+          if (diff <= map.halfAnHour) {
+            result.halfADay++;
+          } else if (diff <= map.anHour) {
+            result.anHour++;
+          } else if (diff <= map.threeHours) {
+            result.threeHours++;
+          } else if (diff <= map.halfADay) {
+            result.halfADay++;
+          } else if (diff <= map.aDay) {
+            result.aDay++;
+          } else if (diff <= map.aWeek) {
+            result.aWeek++;
+          } else if (diff <= map.oneMonth) {
+            result.oneMonth++;
+          }
+        }
+      });
     });
-  });
-  return result;
+    return result;
+  } else {
+    const promises = Promise.all(
+      pullData.map((t, i) =>
+        getGitHubPullReview(owner, repo, t.number, i, pullData.length)
+      )
+    );
+    // keep track of successfully reviewed and failed-to-review GitHub pull requests
+    const result = {
+      success: 0,
+      failure: 0,
+    };
+    await promises.then((res) => {
+      // console.log("Successfully fetch reviewData");
+      res.forEach((t, i) => {
+        // if review.data's length is greater than 0, it means there is comment in that pull request
+        // then it is not an unreviewed pull requests
+        // therefore, the count of successfully reviewed pull requests increments
+        if (Array.isArray(t.data) && t.data.length > 0) {
+          result.success++;
+        } else {
+          // otherwise, the count of pull requests failed to be reviewed increments
+          result.failure++;
+        }
+      });
+    });
+    return result;
+  }
 }
 
+// request for reviews
 async function getGitHubPullReview(owner, repo, pull_number, index, total) {
   return await octokit
     .request("GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews", {
@@ -270,6 +329,20 @@ async function getGitHubPullReview(owner, repo, pull_number, index, total) {
     .then((res) => {
       // console.log(`Current progress: ${index + 1}/${total}`);
       return res;
+    });
+}
+
+// request for comments
+async function getGitHubPullComment(url, index, total) {
+  return await octokit
+    .request(url, {
+      headers: {
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    })
+    .then((res) => {
+      // console.log(`Current progress: ${index + 1}/${total}`);
+      return res.data;
     });
 }
 
@@ -302,19 +375,29 @@ router.get("/generatePull", async (req, res, next) => {
   }
 });
 
+router.get("/responsiveness", async (req, res, next) => {
+  try {
+    const result = await getGitHubPulls(req, "comments");
+    res.send(result);
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "get request for pulls data failed exception" });
+    next(err);
+  }
+});
 
 async function getThoroughPRs(owner, repo) {
   //console.log(owner + " owner 232");
   //console.log(repo + " repository 233 ");
-    try {
-      if (owner && repo) {
+  try {
+    if (owner && repo) {
+      let allPullRequests = [];
+      let page = 1;
+      let hasMorePullRequests = true;
 
-        let allPullRequests = [];
-        let page = 1;
-        let hasMorePullRequests = true;
-
-        while (hasMorePullRequests) {
-          const response = await octokit.request(
+      while (hasMorePullRequests) {
+        const response = await octokit.request(
           "GET /repos/{owner}/{repo}/pulls",
           {
             owner: owner,
@@ -323,66 +406,66 @@ async function getThoroughPRs(owner, repo) {
             base: "main",
             page: page,
             per_page: 100,
-      
+
             headers: {
               "X-GitHub-Api-Version": "2022-11-28",
             },
           }
-        )
+        );
 
-          const pullRequests = response.data;
-          allPullRequests = allPullRequests.concat(pullRequests);
+        const pullRequests = response.data;
+        allPullRequests = allPullRequests.concat(pullRequests);
 
-          // check if there are more pages
-          if (pullRequests.length === 0) {
-            hasMorePullRequests = false;
-          } else {
-            page++;
-          }
+        // check if there are more pages
+        if (pullRequests.length === 0) {
+          hasMorePullRequests = false;
+        } else {
+          page++;
         }
-
-        let totalRequests = allPullRequests.length;
-        let thoroughRequests = 0;
-        //console.log(totalRequests + " total");
-
-        for (const request of allPullRequests) {
-          const commentsResponse = await octokit.request(request.comments_url, {
-            headers: {
-              "X-GitHub-Api-Version": "2022-11-28",
-            },
-          });
-
-          const comments = commentsResponse.data;
-
-          if (comments.length > 0) {
-            thoroughRequests++;
-          }
-        }
-
-        //console.log(thoroughRequests + "getThoroughPRs 289");
-        let percentage = (Math.round((thoroughRequests / totalRequests) * 100));
-        //console.log(percentage + "getThoroughPRs 291");
-        let notThorough = (Math.round(((totalRequests - thoroughRequests) / totalRequests) * 100));
-        //console.log(notThorough + "getThoroughPRs 293");
-        return { percentage, notThorough }; 
       }
-    } catch (error) {
-      console.log("error fetching pull requests " + error);
-      throw error;
-    }
-}
 
+      let totalRequests = allPullRequests.length;
+      let thoroughRequests = 0;
+      //console.log(totalRequests + " total");
+
+      for (const request of allPullRequests) {
+        const commentsResponse = await octokit.request(request.comments_url, {
+          headers: {
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+        });
+
+        const comments = commentsResponse.data;
+
+        if (comments.length > 0) {
+          thoroughRequests++;
+        }
+      }
+
+      //console.log(thoroughRequests + "getThoroughPRs 289");
+      let percentage = Math.round((thoroughRequests / totalRequests) * 100);
+      //console.log(percentage + "getThoroughPRs 291");
+      let notThorough = Math.round(
+        ((totalRequests - thoroughRequests) / totalRequests) * 100
+      );
+      //console.log(notThorough + "getThoroughPRs 293");
+      return { percentage, notThorough };
+    }
+  } catch (error) {
+    console.log("error fetching pull requests " + error);
+    throw error;
+  }
+}
 
 router.get("/thoroughPRs", async (req, res, next) => {
   console.log(req.query);
   try {
-    let owner = req.query.owner; 
-    let repo = req.query.repo; 
+    let owner = req.query.owner;
+    let repo = req.query.repo;
 
     const result = await getThoroughPRs(owner, repo);
     console.log(result + "router");
-    res.json(result); 
-
+    res.json(result);
   } catch (err) {
     res
       .status(500)
@@ -421,24 +504,22 @@ async function getClosedPRs(owner, repo) {
       page++;
     }
 
-    const mergedPRs = allPullRequests.filter(pr => pr.merged_at);
-    const timesToMerge = mergedPRs.map(pr => {
+    const mergedPRs = allPullRequests.filter((pr) => pr.merged_at);
+    const timesToMerge = mergedPRs.map((pr) => {
       const createdAt = new Date(pr.created_at);
       const mergedAt = new Date(pr.merged_at);
-      return (mergedAt - createdAt) / (1000 * 60 * 60);  
+      return (mergedAt - createdAt) / (1000 * 60 * 60);
     });
 
     const total = timesToMerge.reduce((acc, curr) => acc + curr, 0);
     const avgTime = total / timesToMerge.length || 0;
 
     return avgTime;
-
   } catch (error) {
     console.log("error fetching pull requests " + error);
     throw error;
-  }   
+  }
 }
-
 
 router.get("/avgTimeToMerge", async (req, res, next) => {
   try {
@@ -451,6 +532,71 @@ router.get("/avgTimeToMerge", async (req, res, next) => {
     res
       .status(500)
       .json({ message: "get request for closed pulls data failed" });
+  }
+});
+
+async function new_work_metric_filter(ownerOfRepo, repository, shaString) {
+  const files = [];
+  const changeStats = await octokit.request(
+    "GET /repos/{owner}/{repo}/commits/{sha}",
+    {
+      owner: ownerOfRepo,
+      repo: repository,
+      sha: shaString,
+    }
+  );
+  changeStats.data.files.forEach((fileData) => {
+    const fileObject = {
+      changes: fileData.changes,
+      additions: fileData.additions,
+      deletions: fileData.deletions,
+      filename: fileData.filename.split("/").pop(),
+    };
+    files.push(fileObject);
+  });
+
+  const dataObject = {
+    date: changeStats.data.commit.committer.date.split("T")[0],
+    stats: changeStats.data.stats,
+    numFiles: changeStats.data.files.length,
+    files: files,
+  };
+  return dataObject;
+}
+
+router.post("/new_Work", async (req, res, next) => {
+  const { owner, repo } = req.body;
+  try {
+    const filteredData = [];
+
+    //get the date 7 days ago
+    let sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const exactDate = sevenDaysAgo.toISOString().split("T")[0];
+
+    const result = await octokit.request("GET /repos/{owner}/{repo}/commits", {
+      owner: owner,
+      repo: repo,
+      since: exactDate,
+      per_page: 100,
+    });
+    console.log(result.data.length);
+    for (let data of result.data) {
+      //skip the merge pull request commits
+      if (data.commit.verification.verified === true) {
+        continue;
+      }
+      filteredData.push(new_work_metric_filter(owner, repo, data.sha));
+    }
+    console.log(filteredData.length);
+    // res.status(200).json(filteredData);
+    Promise.all(filteredData).then((stat) => {
+      res.send(stat);
+    });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "get request for commit data failed exception" });
     next(err);
   }
 });
