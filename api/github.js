@@ -614,8 +614,8 @@ router.get("/avgTimeToMerge", async (req, res, next) => {
   }
 });
 
-//merge success rate
-//returns all pull requests
+// merge success rate
+// returns all pull requests
 router.get("/mergeSuccessRate/:owner/:repo", async(req, res, next) => {
   try {
     const { owner, repo} = req.params;
@@ -641,7 +641,7 @@ router.get("/mergeSuccessRate/:owner/:repo", async(req, res, next) => {
     }
 
     const mergeSuccessRate = (mergedPR / totalPullRequests) * 100 || 0;
-
+    console.log("this is merge success rate", mergeSuccessRate)
     res.json({
       totalPullRequests: totalPullRequests,
       mergeSuccessRate: mergedPR.toFixed(2),
@@ -650,6 +650,5 @@ router.get("/mergeSuccessRate/:owner/:repo", async(req, res, next) => {
   } catch(error) {
     next(error);
   }
-
 })
 module.exports = router;
