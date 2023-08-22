@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { Octokit } = require("../node_modules/octokit")
+const { Octokit } = require("octokit")
 require("dotenv").config();
 
 const octokit = new Octokit({
