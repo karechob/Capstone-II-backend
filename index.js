@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require("express");
 const app = express();
 const cors = require("cors");
@@ -24,4 +25,4 @@ const configureApp = async (port) => {
     return runServer(port);
 };
 
-module.exports = configureApp(8080);
+module.exports = configureApp(process.env.PORT || 8080);
