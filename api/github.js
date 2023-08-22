@@ -271,36 +271,6 @@ async function getGitHubPullReview(owner, repo, pull_number, index, total) {
     });
 }
 
-router.get("/generatePull", async (req, res, next) => {
-  try {
-    const { owner, repo } = req.query;
-
-    const pullData = await getGitHubPulls(owner, repo);
-
-    const successCount = pullData.success;
-    const failureCount = pullData.failure;
-
-    res.json({ success: successCount, failure: failureCount });
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching pull request data" });
-    next(err);
-  }
-});
-
-
-async function getGitHubPulls(owner, repo) {
-  try {
-
-    const success = 20; // EX Number of reviewed pull requests
-    const failure = 10; // EX Number of unreviewed pull requests
-
-    return { success, failure };
-  } catch (error) {
-    console.log("Error fetching pull requests: ", error);
-    throw error;
-  }
-}
-
 
 /*
   End-point url -> http://localhost:8080/api/github/generatePull?owner=[owner]&repo=[repo]
@@ -330,7 +300,6 @@ router.get("/generatePull", async (req, res, next) => {
     next(err);
   }
 });
-
 
 async function getThoroughPRs(owner, repo) {
   //console.log(owner + " owner 232");
@@ -487,5 +456,38 @@ router.post("/new_Work", async (req, res, next) => {
     next(err);
   }
 });
+
+
+
+//deployment
+router.get("/generatePull", async (req, res, next) => {
+  try {
+    const { owner, repo } = req.query;
+
+    const pullData = await getGitHubPulls(owner, repo);
+
+    const successCount = pullData.success;
+    const failureCount = pullData.failure;
+
+    res.json({ success: successCount, failure: failureCount });
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching pull request data" });
+    next(err);
+  }
+});
+
+async function getGitHubPulls(owner, repo) {
+  try {
+
+   
+    const success = 20; // reviewed pull requests
+    const failure = 10; // unreviewed pull requests
+
+    return { success, failure };
+  } catch (error) {
+    console.log("Error fetching pull requests: ", error);
+    throw error;
+  }
+}
 
 module.exports = router;
