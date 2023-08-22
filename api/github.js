@@ -614,4 +614,36 @@ router.get("/avgTimeToMerge", async (req, res, next) => {
   }
 });
 
+async function reworkFilter(ownerOfRepo, repository, shaString) {
+  const files = [];
+  const commitStats = await octokit.request(
+    "GET /repos/{owner}/{repo}/commits/{sha}",
+    {
+      owner: ownerOfRepo,
+      repo: repository,
+      sha: shaString,
+    }
+  );
+  commitStats.data.files.forEach((fileData) => {
+    if (fileData.status === "modified") {
+      const fileObject = {
+        status: fileData.status,
+        changes: fileData.changes,
+        additions: fileData.additions,
+        deletions: fileData.deletions,
+        filename: fileData.filename.split("/").pop(),
+      };
+      files.push(fileObject);
+    }
+  });
+
+  const dataObject = {
+    date: commitStats.data.commit.committer.date,
+    stats: commitStats.data.stats,
+    numFiles: commitStats.data.files.length,
+    files: files,
+  };
+  return dataObject;
+}
+
 module.exports = router;
