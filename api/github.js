@@ -615,15 +615,41 @@ router.get("/avgTimeToMerge", async (req, res, next) => {
 });
 
 //merge success rate
-router.get("/mergeSuccessRate", async(req, res, next) => {
-  
+//returns all pull requests
+router.get("/mergeSuccessRate/:owner/:repo", async(req, res, next) => {
+  try {
+    const { owner, repo} = req.params;
+
+    // get pull requests
+    const octokit =  octokitMain(req.user.githubAccessToken)
+    const response = await octokit.paginate("GET /repos/:owner/:repo/pulls", {
+      owner: owner,
+      repo: repo,
+      state: "all",
+      per_page: 100,
+    });
+
+    const pullRequests = response;
+    const totalPullRequests = response.length;
+
+    let mergedPR = 0;
+
+    for(const pullRequest of pullRequests) {
+      if(pullRequest.merged_at) {
+        mergedPR++;
+      }
+    }
+
+    const mergeSuccessRate = (mergedPR / totalPullRequests) * 100 || 0;
+
+    res.json({
+      totalPullRequests: totalPullRequests,
+      mergeSuccessRate: mergedPR.toFixed(2),
+    });
+
+  } catch(error) {
+    next(error);
+  }
+
 })
-//  const result = await octokit.request("GET /repos/{owner}/{repo}/pulls", {
-//   owner: owner,
-//   repo: repo,
-//   per_page: 5,
-//   state: "closed",
-// });
-
-
 module.exports = router;
