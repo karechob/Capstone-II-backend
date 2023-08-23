@@ -8,7 +8,14 @@ router.get("/", (req, res) => {
 router.use("/github", require("./github"));
 
 // 404 Handling
+// router.use((req, res, next) => {
+//   const error = new Error("404 Not Found");
+//   error.status = 404;
+//   next(error);
+// });
+
 router.use((req, res, next) => {
+  console.log(`Route not found: ${req.method} ${req.originalUrl}`);
   const error = new Error("404 Not Found");
   error.status = 404;
   next(error);

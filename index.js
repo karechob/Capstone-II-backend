@@ -1,27 +1,21 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const PORT = 8080;
 
+// Middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
-const setupRoutes = () => {
-    app.use("/api", require("./api"));
-    app.get("/", (req, res) => {
-        res.send("Hello! This is capstoneII backend");
-    });
-};
+// Routes
+app.use("/api", require("./api"));
+app.get("/", (req, res) => {
+    res.send("Hello! This is capstoneII backend");
+});
 
-const runServer = async (port) => {
-    app.listen(port, () => {
-        console.log(`server is running on port 8080`);
-    });
-};
+app.listen(PORT, () => {
+    console.log(`API listening on PORT ${PORT}`);
+});
 
-const configureApp = async (port) => {
-    setupRoutes();
-    return runServer(port);
-};
-
-module.exports = configureApp(8080);
+module.exports = app;
