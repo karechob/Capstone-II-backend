@@ -7,86 +7,70 @@ const octokit = new Octokit({
   auth: process.env.GITHUB_ACCESS_TOKEN,
 });
 
-//helper functions
-//send api request to get the data of merge commits based on the sha
-// async function impactFilter(ownerOfRepo, repository, shaString) {
-//   const files = [];
-//   const changeStats = await octokit.request(
-//     "GET /repos/{owner}/{repo}/commits/{sha}",
-//     {
-//       owner: ownerOfRepo,
-//       repo: repository,
-//       sha: shaString,
-//     }
-//   );
-//   changeStats.data.files.forEach((fileData) => {
-//     const fileObject = {
-//       changes: fileData.changes,
-//       additions: fileData.additions,
-//       deletions: fileData.deletions,
-//       filename: fileData.filename.split("/").pop(),
-//     };
-//     files.push(fileObject);
-//   });
+// helper functions
+// send api request to get the data of merge commits based on the sha
+async function impactFilter(ownerOfRepo, repository, shaString) {
+  const files = [];
+  const changeStats = await octokit.request(
+    "GET /repos/{owner}/{repo}/commits/{sha}",
+    {
+      owner: ownerOfRepo,
+      repo: repository,
+      sha: shaString,
+    }
+  );
+  changeStats.data.files.forEach((fileData) => {
+    const fileObject = {
+      changes: fileData.changes,
+      additions: fileData.additions,
+      deletions: fileData.deletions,
+      filename: fileData.filename.split("/").pop(),
+    };
+    files.push(fileObject);
+  });
 
-//   const dataObject = {
-//     date: changeStats.data.commit.committer.date,
-//     stats: changeStats.data.stats,
-//     numFiles: changeStats.data.files.length,
-//     files: files,
-//   };
-//   return dataObject;
-// }
+  const dataObject = {
+    date: changeStats.data.commit.committer.date,
+    stats: changeStats.data.stats,
+    numFiles: changeStats.data.files.length,
+    files: files,
+  };
+  return dataObject;
+}
 
-//post http://localhost:8080/api/github/impact
-//to test out this endpoint, remeber to put the json object below in postman->body->raw->json type
-//{
-//   "owner":"kai2233",
-//   "repo": "TicketWingMan_backend"
-// }
-//
 // result of this endpoint will list out the commits that does merge pull request from branch to main
 // include date, number of files affected, line of code been changed
 // more details about files changes is iniside file object
-// router.post("/impact", async (req, res, next) => {
-//   const { owner, repo } = req.body;
-//   try {
-//     const filteredData = [];
-//     const dataCollection = [];
-    // const result = await octokit.request('GET /repos/{owner}/{repo}/commits', {
-    // 	owner: owner,
-    // 	// repo: 'TicketWingMan_backend',
-    // 	repo: repo,
-    // 	per_page: 100,
-    // });
-    // const result = await octokit.request("GET /repos/{owner}/{repo}/pulls", {
-    //   owner: owner,
-    //   repo: repo,
-    //   per_page: 5,
-    //   state: "closed",
-    // });
-    // res.status(200).json(result.data);
-    // result.data.forEach(async (data) => {
-      // if (data.commit.message.includes("Merge")) {
-      // const result = await filter(data.parents[0].sha);
-      // 	filteredData.push(impactFilter(owner, repo, data.sha))
-      // }
-//       filteredData.push(impactFilter(owner, repo, data.merge_commit_sha));
-//     });
-//     Promise.all(filteredData)
-//       .then((stat) => {
-//         dataCollection.push(stat);
-//       })
-//       .then(() => {
-//         res.send(dataCollection);
-//       });
-//   } catch (err) {
-//     res
-//       .status(500)
-//       .json({ message: "get request for commit data failed exception" });
-//     next(err);
-//   }
-// });
+router.post("/impact", async (req, res, next) => {
+  const { owner, repo } = req.body;
+  try {
+    const filteredData = [];
+    const dataCollection = [];
+    const result = await octokit.request("GET /repos/{owner}/{repo}/pulls", {
+      owner: owner,
+      repo: repo,
+      per_page: 5,
+      state: "closed",
+    });
+    result.data.forEach(async (data) => {
+      if(data.merge_commit_sha){
+      filteredData.push(impactFilter(owner, repo, data.merge_commit_sha));
+      }
+    });
+    Promise.all(filteredData)
+      .then((stat) => {
+        dataCollection.push(stat);
+      })
+      .then(() => {
+        res.send(dataCollection);
+      });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "get request for commit data failed exception" });
+    next(err);
+  }
+});
 
 function leadTimeObjFilter(dataObj) {
   let filteredObj = {};
