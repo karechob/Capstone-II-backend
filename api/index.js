@@ -5,7 +5,7 @@ router.get("/", (req, res) => {
 });
 
 // Mounting the route handlers for users
-router.use("/github", require("./github"));
+router.use("/github", require("./barrel"));
 
 // 404 Handling
 // router.use((req, res, next) => {
